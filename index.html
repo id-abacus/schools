@@ -141,6 +141,31 @@
     .year-grade.high     { color: #1a7c3e; }
     .year-grade.low      { color: #c0392b; }
 
+    /* ── Section group header ── */
+    .section-group-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.6rem 1.5rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border-bottom: 2px solid;
+    }
+
+    .section-group-header.mandatory {
+      background: #eaf2ff;
+      color: #1a5faa;
+      border-color: #b3d0f5;
+    }
+
+    .section-group-header.optional {
+      background: #f4f7fb;
+      color: #556;
+      border-color: #dde3ec;
+    }
+
     /* ── Institution input ── */
     .inst-row {
       display: flex;
@@ -303,6 +328,14 @@
     return '';
   }
 
+  const MANDATORY_ORDER = [
+    'Matematik',
+    'Fysik/kemi',
+    'Fællesprøve i fysik/kemi, biologi og geografi',
+    'Engelsk',
+    'Dansk',
+  ];
+
   function renderSchools(data) {
     const container = document.getElementById('results');
     container.innerHTML = '';
@@ -321,47 +354,69 @@
       const body = document.createElement('div');
       body.className = 'school-body';
 
-      // Subjects sorted alphabetically
-      const sortedSubjects = Object.entries(subjects).sort(([a], [b]) => a.localeCompare(b, 'da'));
+      // Split subjects into mandatory (ordered) and others (alphabetical)
+      const allKeys = Object.keys(subjects);
+      const mandatorySubjects = MANDATORY_ORDER
+        .filter(m => allKeys.some(k => k.toLowerCase() === m.toLowerCase()))
+        .map(m => [allKeys.find(k => k.toLowerCase() === m.toLowerCase()), subjects[allKeys.find(k => k.toLowerCase() === m.toLowerCase())]]);
 
-      for (const [subject, years] of sortedSubjects) {
-        const section = document.createElement('div');
-        section.className = 'subject-section';
+      const otherSubjects = allKeys
+        .filter(k => !MANDATORY_ORDER.some(m => m.toLowerCase() === k.toLowerCase()))
+        .sort((a, b) => a.localeCompare(b, 'da'))
+        .map(k => [k, subjects[k]]);
 
-        const title = document.createElement('div');
-        title.className = 'subject-title';
-        title.textContent = subject;
-        section.appendChild(title);
+      const groups = [
+        { label: '🎓 Bundne prøvefag – 9. klasse', type: 'mandatory', entries: mandatorySubjects },
+        { label: '📚 Øvrige fag', type: 'optional', entries: otherSubjects },
+      ];
 
-        const row = document.createElement('div');
-        row.className = 'years-row';
+      for (const group of groups) {
+        if (group.entries.length === 0) continue;
 
-        // Years sorted chronologically
-        const sortedYears = Object.entries(years).sort(([a], [b]) =>
-          parseInt(a) - parseInt(b)
-        );
+        const groupHdr = document.createElement('div');
+        groupHdr.className = `section-group-header ${group.type}`;
+        groupHdr.textContent = group.label;
+        body.appendChild(groupHdr);
 
-        for (const [year, metrics] of sortedYears) {
-          const gradeValue = Object.values(metrics)[0] ?? '–';
+        for (const [subject, years] of group.entries) {
+          const section = document.createElement('div');
+          section.className = 'subject-section';
 
-          const pill = document.createElement('div');
-          pill.className = 'year-pill';
+          const title = document.createElement('div');
+          title.className = 'subject-title';
+          title.textContent = subject;
+          section.appendChild(title);
 
-          const lbl = document.createElement('span');
-          lbl.className = 'year-label';
-          lbl.textContent = year;
+          const row = document.createElement('div');
+          row.className = 'years-row';
 
-          const grade = document.createElement('span');
-          grade.className = `year-grade ${gradeColor(gradeValue)}`;
-          grade.textContent = gradeValue;
+          // Years sorted chronologically
+          const sortedYears = Object.entries(years).sort(([a], [b]) =>
+            parseInt(a) - parseInt(b)
+          );
 
-          pill.appendChild(lbl);
-          pill.appendChild(grade);
-          row.appendChild(pill);
+          for (const [year, metrics] of sortedYears) {
+            const gradeValue = Object.values(metrics)[0] ?? '–';
+
+            const pill = document.createElement('div');
+            pill.className = 'year-pill';
+
+            const lbl = document.createElement('span');
+            lbl.className = 'year-label';
+            lbl.textContent = year;
+
+            const grade = document.createElement('span');
+            grade.className = `year-grade ${gradeColor(gradeValue)}`;
+            grade.textContent = gradeValue;
+
+            pill.appendChild(lbl);
+            pill.appendChild(grade);
+            row.appendChild(pill);
+          }
+
+          section.appendChild(row);
+          body.appendChild(section);
         }
-
-        section.appendChild(row);
-        body.appendChild(section);
       }
 
       block.appendChild(body);
